@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="icon" href="{{ url_for('static', filename='map.png') }}" type="image/png">
+
+    <meta charset="UTF-8">
+    <title>最短路径计算器</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f4;
+            color: #333; /* 更深的字体颜色 */
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: auto;
+        }
+        .main-container {
+            width: 100%;
+            height: 100%; /* Full height of the viewport */
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+
+            background-color: white;
+            padding: 0;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        #map-container {
+            flex: 2;
+            padding: 10px;
+             position: relative; /* 添加相对定位 */
+        }
+        .form-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            border-left: 1px solid #ddd;
+        }
+        .form-content, .results {
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #28B463; /* 明亮的绿色 */
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: normal; /* 可以调整字体粗细 */
+            text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1); /* 轻微的文字阴影效果 */
+        }
+        form {
+            width: 100%;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        input[type="text"], select, input[type="submit"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc; /* 更细的边框 */
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1); /* 内阴影效果 */
+            border-radius: 4px;
+            transition: border-color 0.3s; /* 添加平滑过渡效果 */
+        }
+        input[type="submit"] {
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            border: none;
+        }
+         /* 美化输入框 */
+        input[type="text"], select {
+            border: 2px solid #ccc; /* 更粗的边框 */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* 轻微外阴影 */
+            transition: border-color 0.3s, box-shadow 0.3s; /* 平滑过渡 */
+        }
+
+        /* 输入框聚焦效果 */
+        input[type="text"]:focus, select:focus {
+            border-color: #28B463; /* 焦点时的边框颜色 */
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2); /* 焦点时的阴影 */
+        }
+        /* 美化选择框 */
+        select {
+            cursor: pointer; /* 更改鼠标样式 */
+        }
+        input[type="text"] {
+            max-width: 513px;
+        }
+
+        /* 改变提交按钮的悬停和激活样式 */
+        input[type="submit"]:hover, input[type="submit"]:active {
+            background-color: #35a849; /* 更亮的绿色 */
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2); /* 添加阴影效果 */
+            transform: scale(1.05); /* 轻微放大 */
+            transition: all 0.3s; /* 平滑过渡效果 */
+        }
+        .results {
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .results h1 {
+            color: #2E8B57;
+            font-size: 1.2em;
+        }
+        .results p {
+            color: #333;
+            font-size: 14px;
+            margin: 5px 0;
+            line-height: 1.6; /* 增加行高提高可读性 */
+        }
+        .highlight {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        .transfer-station {
+            font-weight: bold;
+            color: #DAA520; /* 金色标记换乘站 */
+        }
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+            }
+            #map-container, .form-container {
+                width: 100%;
+            }
+        }
+       .error-message {
+            background-color: #F44336; /* Red background color */
+            color: white; /* White text color */
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 16px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+       }
+
+        .error-message a {
+            color: #FFC107; /* Yellow link color for error message */
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .error-message a:hover {
+            text-decoration: underline;
+        }
+        .transfer-station-highlight {
+            font-weight: bold;
+            color: #196F3D; /* 深绿色 */
+            text-decoration: underline; /* 可选，如果您希望下划线突出显示 */
+        }
+
+        /* 通用图标样式 */
+        .icon {
+            vertical-align: middle;
+            margin-right: 5px;
+        }
+
+        /* 放大镜图标样式 */
+        .icon-magnify {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* 地图图标样式 */
+        .icon-map {
+            width: 120px; /* 较大的地图图标 */
+            height: 120px;
+             position: absolute; /* 绝对定位 */
+             top: 5px; /* 调整位置 */
+            left: 5px;
+
+        }
+        /* 调整路径图标大小（根据需要调整） */
+        .icon-path {
+            width: 25px; /* 示例宽度 */
+            height: 25px; /* 示例高度 */
+        }
+
+
+
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div id="map-container">
+            <img src="{{ url_for('static', filename='map.png') }}" class="icon icon-map" alt="Map Icon">
+            <iframe src="{{ url_for('static', filename='Guangzhou_railway.html') }}" width="100%" height="100%" style="border:none;"></iframe>
+        </div>
+
+        <div class="form-container">
+            <div class="form-content">
+                <h1>最短路径计算器</h1>
+                <form id="myForm" action="/index" method="post">
+                    <label for="start_station">
+                          <img src="{{ url_for('static', filename='loupe.png') }}" class="icon icon-magnify" alt="Search Icon">
+                        起始站：
+                    </label>
+                    <input type="text" id="start_station" name="start_station" placeholder="请输入起始站名称，例如：广州南站" required><br>
+
+                    <label for="end_station">
+                         <img src="{{ url_for('static', filename='loupe.png') }}" class="icon icon-magnify" alt="Search Icon">
+                        终点站：
+                    </label>
+                    <input type="text" id="end_station" name="end_station" placeholder="请输入终点站名称，例如：珠江新城" required><br>
+
+                    <label for="algorithm">选择算法：</label>
+                    <select id="algorithm" name="algorithm">
+                        <option value="algorithm1">最短时间</option>
+                        <option value="algorithm2">最短路线</option>
+                        <option value="algorithm3">最少地铁换乘</option>
+                    </select><br>
+
+                    <input type="submit" value="计算路径">
+                </form>
+            </div>
+
+        {% if error %}
+            <!-- Add the error message here -->
+            <div class="error-message">
+                {{ error }}
+            </div>
+        {% endif %}
+        {% if results %}
+            <div class="results">
+                <h1>
+                     <img src="{{ url_for('static', filename='path.png') }}" class="icon icon-path" alt="Path Icon">
+                    路径结果
+                </h1>
+                <p><span class="highlight">使用的算法:</span>
+                    {% if request.form.algorithm == 'algorithm1' %}
+                        最短时间算法
+                    {% elif request.form.algorithm == 'algorithm2' %}
+                        最短路线算法
+                    {% elif request.form.algorithm == 'algorithm3' %}
+                        最少地铁换乘算法
+                    {% else %}
+                        未知算法
+                    {% endif %}
+                </p>
+                <p><span class="highlight">经过总站点数:</span> {{ results.path | length }}</p>
+                <p>
+                    <span class="highlight">路径:</span>
+                    {% for station in results.path %}
+                        {% if station in results.transfer_stations %}
+                            <span class="transfer-station-highlight">{{ station }}</span>
+                        {% else %}
+                            {{ station }}
+                        {% endif %}
+                        {% if not loop.last %} -> {% endif %}
+                    {% endfor %}
+                </p>
+                <p><span class="highlight">总时间:</span> {{ results.shortest_time }} 分钟</p>
+                <p><span class="highlight">换乘次数:</span> {{ results.number_of_transfers }}</p>
+                {% if results.number_of_transfers > 0 %}
+                    <p><span class="highlight">换乘站:</span> {{ results.transfer_stations | join(', ') }}</p>
+                {% endif %}
+
+                <p><span class="highlight">总距离:</span> {{ '%.2f' | format(results.total_distance) }} 公里</p>
+            </div>
+        {% endif %}
+            <form action="/index" method="get">
+                <input type="submit" value="返回" />
+            </form>
+        </div>
+    </div>
+</body>
+</html>
